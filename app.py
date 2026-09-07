@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from database import (
-    register_user, authenticate_user, 
+    init_db, register_user, authenticate_user, 
     fetch_shop_transactions, insert_shop_transaction
 )
 from predictor import predict_future_sales, get_top_items
@@ -11,6 +11,9 @@ from pdf_generator import generate_pdf_report
 
 st.set_page_config(page_title="Rural AI Assistant - SIH26091", layout="wide")
 
+# Ensure DB initialized on startup
+init_db()
+
 # Initialize Session State Variables
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -18,12 +21,11 @@ if "user_info" not in st.session_state:
     st.session_state.user_info = None
 
 # ==========================================
-# AUTHENTICATION SCREEN (REGISTRATION FIRST)
+# AUTHENTICATION SCREEN
 # ==========================================
 if not st.session_state.authenticated:
     st.title("🌾 Rural Micro-Entrepreneur Portal")
     
-    # Registration tab PEHLE rakha hai
     auth_tab1, auth_tab2 = st.tabs(["📝 New Registration (Dukaan Register Karein)", "🔑 Login"])
 
     with auth_tab1:
@@ -49,6 +51,8 @@ if not st.session_state.authenticated:
 
     with auth_tab2:
         st.subheader("Shopkeeper Login")
+        st.caption("💡 **Demo Credentials:** Shop ID: `SHOP-9001` | Password: `password123`")
+        
         login_shop_id = st.text_input("Shop ID (e.g. SHOP-1234)", key="login_id")
         login_password = st.text_input("Password", type="password", key="login_pass")
         
@@ -57,7 +61,7 @@ if not st.session_state.authenticated:
             if success:
                 st.session_state.authenticated = True
                 st.session_state.user_info = {
-                    "shop_id": login_shop_id,
+                    "shop_id": login_shop_id.strip().upper(),
                     "owner_name": user_data["owner_name"],
                     "shop_name": user_data["shop_name"]
                 }
@@ -66,10 +70,10 @@ if not st.session_state.authenticated:
             else:
                 st.error("Galat Shop ID ya Password!")
 
-    st.stop()  # Login hone tak aage ka dashboard render nahi hoga
+    st.stop()
 
 # ==========================================
-# MAIN DASHBOARD (POST LOGIN DATA ISOLATED)
+# MAIN DASHBOARD
 # ==========================================
 user = st.session_state.user_info
 
@@ -100,7 +104,7 @@ if st.sidebar.button("Log Transaction"):
     st.sidebar.success("Transaction Logged!")
     st.rerun()
 
-# Fetch Isolated Data for Logged-In User
+# Fetch Isolated Data
 df = fetch_shop_transactions(user['shop_id'])
 
 st.title(f"🌾 AI Assistant - {user['shop_name']}")
@@ -143,7 +147,7 @@ with tab1:
     if not df.empty:
         st.dataframe(df.tail(10), use_container_width=True)
 
-# TAB 2: SCHEMES & AUTO-POPULATED REPORT GENERATOR
+# TAB 2: SCHEMES & BANK REPORT
 with tab2:
     st.subheader("🏛️ Government Credit Schemes & Financial Structuring")
     st.write(f"Automated credit line analysis for **{user['shop_name']}** (`ID: {user['shop_id']}`).")
